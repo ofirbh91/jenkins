@@ -1,44 +1,40 @@
 pipeline {
-    agent { label "docker" }
+    agent any
+
     stages {
-        stage('Initialize') {
+        stage("Initialize") {
             steps {
                 cleanWs()
             }
         }
-        stage('Get SCM') {
+        stage('get SCM') {
             steps {
-                git branch: 'develop', url: 'https://github.com/ranazrad/simple-webapp-nodejs.git'
+                git branch: 'develop', url: 'https://github.com/ofirbh91/jenkins.git'
+                sh "cd ~/"
+                sh "ls -l"
             }
         }
-        stage('Build') {
-            steps {
-                nodejs('nodejs') {
-                    sh "npm install"
+        stage('build'){
+            steps{
+                sh "docker build -t nodewebapp ."
+                sh "docker images"
+            }
+        }
+         stage('deploy'){
+            steps{
+                script{
+                  try{
+                    sh "docker kill nodewebapp"
+                    sh "docker rm nodewebapp"
+                    sh "docker run -itd --name nodewebapp -p 8081:3000 nodewebapp:latest &"
+            }catch(e) {
+                echo e.getMessage()
+                sh "docker run -itd --name nodewebapp -p 8081:3000 nodewebapp:latest &"
+            }
                 }
             }
-        }
-        stage('Test') {
-            steps {
-                nodejs('nodejs') {
-                    sh 'npm run test'
-                }
-            }
-        }
-        stage("Deploy") {
-            steps {
-                sshagent(['ec2-user']) {
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@34.220.147.36 rm -rf deployment"
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@34.220.147.36 mkdir deployment"
-                    sh "scp -o StrictHostKeyChecking=no -r * ec2-user@34.220.147.36:deployment"
-                    sh "ssh -o StrictHostKeyChecking=no ec2-user@34.220.147.36 sh deployment/execute_webapp.sh &"
-                }
-            }
-        }
-        stage("Finished") {
-            steps {
-                sleep(60)
-            }
-        }
     }
+    
 }
+}
+
